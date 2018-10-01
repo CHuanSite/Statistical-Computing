@@ -1,0 +1,142 @@
+---
+title: "Homework1-Tidy Data"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+###Huan Chen
+
+Before the assignment, load the packages```dplyr,tidyr,readr```
+```{r,results="hide"}
+library("dplyr")
+library("tidyr")
+library("readr")
+```
+
+
+#Part 1
+Load the ```WorldPhones``` dataset from the ```datasets``` package.
+```{r}
+library(datasets)
+data(WorldPhones)
+WorldPhones
+```
+Transform the ```WorldPhones``` data into the data frame form.
+```{r}
+WorldPhones1<-as.data.frame(WorldPhones)
+```
+Apply the ```mutate``` function from ```dplyr``` to add a new column ```year``` into the ```WorldPhones``` dataset.
+```{r}
+WorldPhones1<-mutate(WorldPhones1,year=row.names(WorldPhones))
+```
+Apply the ```gather``` function from ```tidyr``` package to gather the data.
+```{r}
+gather(WorldPhones1,key=country,value=number,-year)
+```
+#Part 2
+Use the function ```read_csv```  from ```readr``` package to read the ```SPEC_2014.csv.zip```
+```{r,cache=TRUE}
+PM25<-read_csv("SPEC_2014.csv.zip")
+```
+
+1.The average value of "Bromine PM2.5 LC" in the state of Wisconsin in this dataset is
+```{r}
+PM25 %>% 
+  filter(State.Name=="Wisconsin"&Parameter.Name=="Bromine PM2.5 LC")%>% 
+  summarize(mean_pm25=mean(Sample.Value))
+```
+
+2.The average of each chemical constituent across all states/monitors and all time points is
+```{r}
+PM25 %>% 
+  group_by(Parameter.Name) %>% 
+  summarize(mean=mean(Sample.Value))
+```
+The constituent that has the highest average level is ```OC CSN Unadjusted PM2.5 LC TOT```
+```{r}
+PM25 %>% 
+  group_by(Parameter.Name) %>% 
+  summarize(mean=mean(Sample.Value)) %>% 
+  filter(mean==max(mean))
+```
+
+3.The monitoring site that has the highest levels of "Sulfate PM2.5 LC" is
+```{r}
+PM25 %>% 
+  select(Parameter.Name,State.Code,County.Code,Site.Num,Sample.Value)%>% 
+  filter(Parameter.Name=="Sulfate PM2.5 LC") %>% 
+  filter(Sample.Value==max(Sample.Value))
+```
+
+4.The difference in the average levels of "EC PM2.5 LC TOR" between California and Arizona is
+```{r}
+PM25 %>% 
+  filter(Parameter.Name=="EC PM2.5 LC TOR"& State.Name=="California")%>% 
+  summarize(pm25_mean=mean(Sample.Value)) - 
+PM25 %>% 
+  filter(Parameter.Name=="EC PM2.5 LC TOR"& State.Name=="Arizona")%>% 
+  summarize(pm25_mean=mean(Sample.Value))
+```
+
+5.The median levels of "OC PM2.5 LC TOR" and "EC PM2.5 LC TOR" in the western and eastern US is
+```{r}
+PM25 %>% 
+  mutate(position=factor(Longitude<(-100),labels=c("Eastern","Western"))) %>%  
+  filter(Parameter.Name %in% c("OC PM2.5 LC TOR","EC PM2.5 LC TOR")) %>% 
+  group_by(position,Parameter.Name)%>% 
+  summarize(median(Sample.Value))
+```
+
+#Part 3
+Install the package ```readxl``` package first.
+```{r}
+library(readxl)
+```
+Read the ```aqs_sites.xlsx``` using the ```read_excel``` function.
+```{r}
+MS<-read_excel("aqs_sites.xlsx")
+```
+1.The number of monitoring sites that are labelled both "RESIDENTIAL" for Land Use and "SUBURBAN" for Location Setting is
+```{r}
+MS %>% 
+  filter(`Land Use` == 'RESIDENTIAL' & `Location Setting`=='SUBURBAN') %>% 
+  summarize(Number_Monitoring_Sites=n())
+```
+2.The median levels of "0C PM2.5 LC TOR" and "EC PM2.5 LC TOR" amongst monitoring sites that are labelled as both "RESIDENTIAL" and "SUBURBAN" in the eastern US are
+```{r}
+MS<-MS %>% 
+  rename(State.Code=`State Code`,County.Code=`County Code`,Site.Num=`Site Number`)
+
+PM25<-PM25 %>%  
+  mutate(State.Code=as.numeric(State.Code),County.Code=as.numeric(County.Code),Site.Num=as.numeric(Site.Num))
+
+Combined_Dataset<-full_join(PM25,MS,by=c("State.Code","County.Code","Site.Num"))
+
+Combined_Dataset %>% 
+  filter(Parameter.Name %in% c("OC PM2.5 LC TOR","EC PM2.5 LC TOR") & 
+         Longitude.x>=(-100) & 
+         `Land Use` == 'RESIDENTIAL' & 
+         `Location Setting`=='SUBURBAN') %>% 
+  group_by(Parameter.Name) %>% 
+  summarize(median(Sample.Value)) 
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
